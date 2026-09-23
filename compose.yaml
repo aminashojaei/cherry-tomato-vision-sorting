@@ -1,0 +1,21 @@
+services:
+  tomato-sorting:
+    platform: linux/amd64
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runtime
+    image: cherry-tomato-vision-sorting:cpu
+    init: true
+    volumes:
+      - ./inputs:/data/input:ro
+      - ./outputs:/data/output
+    command:
+      - --config
+      - /app/config/config.yaml
+      - --input
+      - /data/input
+      - --output-dir
+      - /data/output
+      - --device
+      - cpu

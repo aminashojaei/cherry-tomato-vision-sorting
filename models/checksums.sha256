@@ -1,0 +1,2 @@
+d7de5dfd8a97509fb0e749c0030942323f1a3b9c390279d156b389af04d0e82d  models/detector/yolo_tomato_detector.pt
+d209caa10840b07aee07940d2de6747c7906c3cba7b8a12c825eae3bcdfb8c09  models/classifier/shufflenet_multitask.pt

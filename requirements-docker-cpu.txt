@@ -1,0 +1,6 @@
+# PyTorch 2.5.1 and torchvision 0.20.1 are installed from the official CPU index in Dockerfile.
+ultralytics==8.4.125
+opencv-python==4.10.0.84
+numpy==1.26.4
+lap==0.5.12
+PyYAML==6.0.2
