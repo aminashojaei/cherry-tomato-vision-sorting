@@ -1,0 +1,62 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# IDE and operating-system files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Runtime data and generated outputs
+inputs/
+outputs/
+runs/
+logs/
+*.log
+*.tmp
+*.bak
+pip-build-*/
+pip-ephem-*/
+pip-install-*/
+pip-metadata-*/
+pip-unpack-*/
+pip-target-*/
+
+# Large media is ignored by default. Curated README assets are explicitly kept.
+*.mp4
+*.avi
+*.mov
+*.mkv
+*.webm
+*.gif
+!assets/demo/annotated_sample.mp4
+!assets/demo/annotated_sample.gif
+
+# Model experiments and caches
+checkpoints/
+experiments/
+wandb/
+mlruns/
+*.onnx
+*.engine
+*.tflite
+
+# The two release checkpoints are intentionally versioned.
+models/**/*.pt
+!models/detector/yolo_tomato_detector.pt
+!models/classifier/shufflenet_multitask.pt

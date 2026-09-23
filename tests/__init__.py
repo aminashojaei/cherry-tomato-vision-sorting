@@ -1,0 +1,1 @@
+"""Dependency-independent project tests."""

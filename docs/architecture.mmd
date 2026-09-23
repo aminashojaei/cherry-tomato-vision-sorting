@@ -1,0 +1,13 @@
+flowchart TD
+    A[Input video] --> B[YOLO tomato detection]
+    B --> C[ByteTrack identity tracking]
+    C --> D[ROI crop and quality checks]
+    D --> E[ShuffleNetV2 multi-head inference]
+    E --> F[Temporal aggregation]
+    C --> G[Measurement-zone geometry]
+    G --> H[Size: Small / Medium / Large]
+    F --> I[Health: Healthy / Unhealthy]
+    F --> J[Calyx: Absent / Present]
+    H --> K[Final composite class]
+    I --> K
+    J --> K

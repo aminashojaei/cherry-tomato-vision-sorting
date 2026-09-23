@@ -1,0 +1,17 @@
+{
+  "health_threshold": 0.375,
+  "calyx_threshold": 0.77,
+  "image_size": 256,
+  "selected_stage": "finetune",
+  "test_n": 208,
+  "label_convention": {
+    "health": {
+      "0": "healthy",
+      "1": "unhealthy"
+    },
+    "calyx": {
+      "0": "absent",
+      "1": "present"
+    }
+  }
+}
