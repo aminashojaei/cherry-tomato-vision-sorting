@@ -79,7 +79,7 @@ Python نسخهٔ 3.10 تا 3.13 پشتیبانی می‌شود. فایل requir
 ### Linux و macOS
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/aminashojaei/cherry-tomato-vision-sorting.git
 cd cherry-tomato-vision-sorting
 python -m venv .venv
 source .venv/bin/activate
@@ -90,7 +90,7 @@ pip install -r requirements.txt
 ### Windows PowerShell
 
 ```powershell
-git clone <repository-url>
+git clone https://github.com/aminashojaei/cherry-tomato-vision-sorting.git
 Set-Location cherry-tomato-vision-sorting
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -102,7 +102,7 @@ python -m pip install -r requirements.txt
 
 ## Docker
 
-workflow قابل‌بازتولید Docker از Python 3.11.11 و dependencyهای pin‌شدهٔ CPU استفاده می‌کند و هدف آن `linux/amd64` است. هنگام ساخت هر image نهایی، hash هر دو مدل بررسی و کل test suite اجرا می‌شود. runtime stage به marker ساخته‌شده در test stage وابسته است؛ بنابراین fail شدن هر تست مانع ساخته‌شدن image نهایی می‌شود.
+workflow Docker از image پایهٔ Python 3.11.11 و dependencyهای pin‌شدهٔ CPU استفاده می‌کند و هدف آن `linux/amd64` است. هنگام ساخت هر image نهایی، hash هر دو مدل بررسی و کل test suite اجرا می‌شود. runtime stage به marker ساخته‌شده در test stage وابسته است؛ بنابراین fail شدن هر تست مانع ساخته‌شدن image نهایی می‌شود.
 
 ```bash
 mkdir -p inputs outputs
@@ -170,12 +170,16 @@ d209caa10840b07aee07940d2de6747c7906c3cba7b8a12c825eae3bcdfb8c09  shufflenet_mul
 
 measurement zone تخمین را به بخش باریکی از تصویر محدود می‌کند که اثر perspective در آن یکنواخت‌تر است. بدون کالیبراسیون دوربین و هندسهٔ مشخص، یک گوجهٔ یکسان در نقاط مختلف تصویر می‌تواند تعداد پیکسل متفاوتی داشته باشد. این آستانه‌ها فقط برای setup مشابه دوربینی که روی آن تنظیم شده‌اند معتبرند.
 
+برای کالیبراسیون دوباره، `size_estimation.thresholds` و zoneهای مربوط را در `config/config.yaml` تغییر دهید؛ مستطیل‌های روی ویدئو از همان zoneهای پردازش استفاده می‌کنند. اندازه‌گیر فعلی فقط `metric: min_dimension` و `required_samples: 1` را پیاده‌سازی کرده است؛ افزایش تعداد نمونه به تغییر منطق اندازه‌گیری نیاز دارد.
+
 ## محدودیت‌ها
 
 - اندازه‌ها پیکسلی‌اند و نباید به میلی‌متر تعبیر شوند.
 - تغییر resolution، crop، لنز، ارتفاع دوربین یا هندسهٔ نوار به کالیبراسیون دوبارهٔ zoneها و thresholdها نیاز دارد.
 - معیارهای classifier شامل missهای detector، تعویض شناسه در tracker یا دقت کل pipeline نیستند.
 - تجمیع زمانی نویز فریم‌به‌فریم را کم می‌کند اما ممکن است تصمیم نهایی را عقب بیندازد.
+- نمونه‌گیری کاسبرگ با قفل شدن تصمیم سلامت متوقف می‌شود؛ بنابراین میانگین آن ممکن است از نمونه‌های کمتری نسبت به یک policy مستقل ساخته شود.
+- `passed` یعنی track طبقه‌بندی‌شده به مدت buffer ردیابی ناپدید شده است، نه عبور اثبات‌شده از خط خروج فیزیکی. track فعال در پایان ویدئو `passed` شمرده نمی‌شود.
 - فایل‌های checkpoint باینری PyTorch هستند؛ فقط وزن‌های منبع قابل اعتماد را بارگذاری کنید.
 - pipeline فعلی برای پردازش آفلاین ویدئو است و کنترل‌کنندهٔ real-time عملگر مکانیکی نیست.
 - پشتیبانی codec و سرعت اجرا به build سیستم‌عامل، OpenCV، FFmpeg و سخت‌افزار بستگی دارد.
@@ -212,4 +216,4 @@ cherry-tomato-vision-sorting/
 python -m unittest discover -s tests -v
 ```
 
-برای مراحل کامل ساخت repository و push کردن پروژه، [راهنمای انتشار در GitHub](docs/GITHUB_PUBLISHING.fa.md) را بخوانید.
+برای مراحل به‌روزرسانی و ارسال تغییرها به مخزن فعلی، [راهنمای به‌روزرسانی در GitHub](docs/GITHUB_PUBLISHING.fa.md) را بخوانید.
