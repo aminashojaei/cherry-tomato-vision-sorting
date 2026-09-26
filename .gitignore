@@ -60,4 +60,3 @@ mlruns/
 models/**/*.pt
 !models/detector/yolo_tomato_detector.pt
 !models/classifier/shufflenet_multitask.pt
-.github/workflows/tests.yml
