@@ -9,11 +9,18 @@ import numpy as np
 
 
 class FrameAnnotator:
-    def __init__(self, config: dict[str, Any]) -> None:
+    def __init__(
+        self,
+        config: dict[str, Any],
+        classification_zone: dict[str, float],
+        size_zone: dict[str, float],
+    ) -> None:
         import cv2
 
         self.cv2 = cv2
         self.config = config
+        self.classification_zone = classification_zone
+        self.size_zone = size_zone
         self.font_scale = float(config["font_scale"])
         self.font_thickness = int(config["font_thickness"])
 
@@ -28,7 +35,7 @@ class FrameAnnotator:
             width,
             height,
             enabled=bool(self.config.get("draw_classification_zone", False)),
-            zone_key="classification_zone",
+            zone=self.classification_zone,
             color_key="classification_zone_color",
         )
         self._draw_zone(
@@ -36,7 +43,7 @@ class FrameAnnotator:
             width,
             height,
             enabled=bool(self.config.get("draw_size_measurement_zone", False)),
-            zone_key="size_measurement_zone",
+            zone=self.size_zone,
             color_key="size_measurement_zone_color",
         )
 
@@ -45,10 +52,9 @@ class FrameAnnotator:
 
         return self._draw_sidebar(canvas, tracks or active_tracks)
 
-    def _draw_zone(self, canvas, width, height, *, enabled, zone_key, color_key):
+    def _draw_zone(self, canvas, width, height, *, enabled, zone, color_key):
         if not enabled:
             return
-        zone = self.config.get(zone_key)
         if not zone:
             return
         self.cv2.rectangle(

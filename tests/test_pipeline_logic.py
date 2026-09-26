@@ -3,18 +3,20 @@
 from __future__ import annotations
 
 import json
+import copy
 import pickletools
 import tempfile
 import unittest
 import zipfile
 from argparse import Namespace
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 
 from classifier.temporal_policy import AsymmetricTemporalPolicy
-from core.config_loader import load_config
-from core.exceptions import CropError
+from core.config_loader import load_config, validate_config
+from core.exceptions import ConfigurationError, CropError
 from core.schemas import (
     BoundingBox,
     ClassificationResult,
@@ -24,7 +26,6 @@ from core.schemas import (
 )
 from crop.crop_manager import CropManager
 from crop.quality_gate import CropQualityGate
-from geometry.size_estimator import PixelSizeEstimator
 from geometry.temporal_size_estimator import TemporalShortSideMeasurer
 from tracker.bytetrack_tracker import instantiate_bytetracker
 from tracker.track_manager import TrackManager
@@ -52,6 +53,8 @@ class ConfigurationTests(unittest.TestCase):
             "lower_zone_asymmetric_temporal_voting",
         )
         self.assertTrue(config["visualization"]["draw_classification_zone"])
+        self.assertNotIn("classification_zone", config["visualization"])
+        self.assertNotIn("size_measurement_zone", config["visualization"])
         self.assertEqual(
             config["detector"]["weights_path"],
             "models/detector/yolo_tomato_detector.pt",
@@ -108,6 +111,36 @@ class ConfigurationTests(unittest.TestCase):
             metadata["calyx_threshold"], config["classifier"]["calyx"]["threshold"]
         )
 
+    def test_camera_size_thresholds_can_be_recalibrated(self) -> None:
+        config = load_config(PROJECT_ROOT / "config/config.yaml")
+        config["size_estimation"]["thresholds"] = {"small_max_px": 140, "medium_max_px": 230}
+        validate_config(config)
+        config["size_estimation"]["thresholds"]["medium_max_px"] = 100
+        with self.assertRaises(ConfigurationError):
+            validate_config(config)
+
+    def test_missing_policy_and_invalid_stride_raise_configuration_error(self) -> None:
+        config = load_config(PROJECT_ROOT / "config/config.yaml")
+        without_policy = copy.deepcopy(config)
+        del without_policy["classification_policy"]
+        with self.assertRaises(ConfigurationError):
+            validate_config(without_policy)
+        config["classification_policy"]["sample_stride_frames"] = 0
+        with self.assertRaises(ConfigurationError):
+            validate_config(config)
+
+    def test_required_samples_stays_one_until_multi_sample_measurement_exists(self) -> None:
+        config = load_config(PROJECT_ROOT / "config/config.yaml")
+        config["size_estimation"]["required_samples"] = 2
+        with self.assertRaises(ConfigurationError):
+            validate_config(config)
+
+    def test_unsupported_component_type_is_rejected(self) -> None:
+        config = load_config(PROJECT_ROOT / "config/config.yaml")
+        config["tracker"]["type"] = "another_tracker"
+        with self.assertRaises(ConfigurationError):
+            validate_config(config)
+
 
 class BoundingBoxTests(unittest.TestCase):
     def test_clip_and_outside_ratio(self) -> None:
@@ -138,33 +171,32 @@ class CropTests(unittest.TestCase):
 
 
 class TrackManagerTests(unittest.TestCase):
-    def test_classifies_once_after_delayed_quality(self) -> None:
+    def test_saves_temporal_observation(self) -> None:
         manager = TrackManager()
         first = TrackerObservation(7, BoundingBox(0, 0, 30, 30), 0.40, 1, True, True)
         second = TrackerObservation(7, BoundingBox(2, 2, 34, 34), 0.90, 2, True, True)
         manager.upsert(first, 10)
         track = manager.upsert(second, 11)
         result = ClassificationResult(0.91, 1, 0.91, 0.87, 1, 0.87)
-        manager.save_classification(7, result, 11)
-        self.assertTrue(track.classified)
+        manager.save_temporal_observation(7, result, 11)
+        self.assertFalse(track.classified)
         self.assertEqual(track.first_frame, 10)
-        self.assertEqual(track.classification_frame, 11)
+        self.assertIsNone(track.classification_frame)
         self.assertEqual(track.health_history, [0.91])
         self.assertEqual(len(track.bbox_history), 2)
-        with self.assertRaises(ValueError):
-            manager.save_classification(7, result, 12)
 
-    def test_finalize_marks_unpassed_classified_track(self) -> None:
+    def test_video_end_does_not_claim_active_track_passed(self) -> None:
         manager = TrackManager()
         observation = TrackerObservation(
             9, BoundingBox(0, 0, 30, 30), 0.9, 1, True, True
         )
         manager.upsert(observation, 4)
         result = ClassificationResult(0.91, 1, 0.91, 0.20, 0, 0.80)
-        track = manager.save_classification(9, result, 4)
-        manager.finalize_all(12)
-        self.assertTrue(track.passed)
-        self.assertEqual(track.passed_frame, 12)
+        track = manager.save_temporal_observation(9, result, 4)
+        track.classified = True
+        manager.finalize_all()
+        self.assertFalse(track.passed)
+        self.assertIsNone(track.passed_frame)
 
 
 class ByteTrackCompatibilityTests(unittest.TestCase):
@@ -221,11 +253,35 @@ class QualityGateTests(unittest.TestCase):
 class SizeEstimatorTests(unittest.TestCase):
     def test_size_thresholds(self) -> None:
         config = load_config(PROJECT_ROOT / "config/config.yaml")
-        estimator = PixelSizeEstimator(config["size_estimation"])
+        config["size_estimation"]["zone"] = {"x_min_ratio": 0, "x_max_ratio": 1, "y_min_ratio": 0, "y_max_ratio": 1}
+        config["size_estimation"]["reject_if_touches_frame_edge"] = False
+        estimator = TemporalShortSideMeasurer(config["size_estimation"])
         cases = [(150, "Small"), (151, "Medium"), (250, "Medium"), (251, "Large")]
         for dimension, expected in cases:
-            track = TomatoTrack(1, 0, 0, BoundingBox(0, 0, dimension, dimension), 0.9)
-            self.assertEqual(estimator.estimate(track), expected)
+            track = TomatoTrack(1, 0, 0, BoundingBox(10, 10, 10 + dimension, 10 + dimension), 0.9)
+            self.assertTrue(estimator.observe(track, 5, (400, 400, 3)))
+            self.assertEqual(track.size_class, expected)
+            self.assertEqual(track.size_finalization_frame, 5)
+            self.assertFalse(estimator.observe(track, 6, (400, 400, 3)))
+
+    def test_size_requires_valid_zone_confidence_and_box(self) -> None:
+        config = load_config(PROJECT_ROOT / "config/config.yaml")["size_estimation"]
+        estimator = TemporalShortSideMeasurer(config)
+        track = TomatoTrack(2, 0, 0, BoundingBox(10, 10, 60, 60), 0.9)
+        self.assertFalse(estimator.observe(track, 1, (400, 400, 3)))
+        track.bbox = BoundingBox(10, 290, 60, 340)
+        track.detection_confidence = 0.2
+        self.assertFalse(estimator.observe(track, 2, (400, 400, 3)))
+        track.detection_confidence = 0.9
+        track.bbox = BoundingBox(0, 290, 50, 340)
+        self.assertFalse(estimator.observe(track, 3, (400, 400, 3)))
+        track.bbox = BoundingBox(10, 290, 60, 340)
+        self.assertTrue(estimator.observe(track, 4, (400, 400, 3)))
+
+    def test_invalid_bbox_is_not_measured(self) -> None:
+        config = load_config(PROJECT_ROOT / "config/config.yaml")["size_estimation"]
+        track = TomatoTrack(3, 0, 0, BoundingBox(50, 290, 40, 340), 0.9)
+        self.assertFalse(TemporalShortSideMeasurer(config).observe(track, 1, (400, 400, 3)))
 
 
 class ReportTests(unittest.TestCase):
@@ -253,6 +309,14 @@ class ReportTests(unittest.TestCase):
         record = writer.serialize_track(track)
 
         self.assertEqual(record["final_class"], "medium_healthy_present")
+
+    def test_summary_uses_configured_size_labels(self) -> None:
+        writer = TomatoReportWriter({"json_indent": 2}, {"small": "ریز", "medium": "متوسط", "large": "درشت"})
+        track = TomatoTrack(1, 0, 0, BoundingBox(10, 10, 30, 30), 0.9)
+        track.size_class = "ریز"
+        with tempfile.TemporaryDirectory() as directory:
+            report = writer.write(Path(directory) / "report.json", [track], {})
+        self.assertEqual(report["summary"]["small_tracks"], 1)
 
 
 class BatchInputTests(unittest.TestCase):
@@ -317,6 +381,15 @@ class BatchInputTests(unittest.TestCase):
 
 
 class OrchestrationTests(unittest.TestCase):
+    def test_output_cannot_overwrite_input(self) -> None:
+        from pipeline.video_pipeline import VideoPipeline
+
+        config = load_config(PROJECT_ROOT / "config/config.yaml")
+        config["paths"]["output_video"] = config["paths"]["input_video"]
+        with patch("pipeline.video_pipeline.select_device", return_value="cpu"):
+            with self.assertRaisesRegex(ValueError, "must differ"):
+                VideoPipeline(config)
+
     def test_pipeline_aggregates_temporal_classifications(self) -> None:
         from pipeline.video_pipeline import VideoPipeline
 

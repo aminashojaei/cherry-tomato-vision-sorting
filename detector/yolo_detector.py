@@ -16,7 +16,7 @@ class YOLODetector:
         if not weights_path.is_file():
             raise ModelLoadError(
                 f"Tomato detector checkpoint not found: {weights_path}. "
-                "Confirm that the complete project archive was extracted, including models/detector/best.pt."
+                "Confirm that the detector weights path in the configuration points to an existing checkpoint."
             )
 
         try:

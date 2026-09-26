@@ -38,6 +38,23 @@ class DockerReleaseTests(unittest.TestCase):
         for dependency in expected:
             self.assertIn(dependency, requirements)
 
+    def test_shared_dependencies_match_main_requirements(self) -> None:
+        main = (PROJECT_ROOT / "requirements.txt").read_text(encoding="utf-8")
+        docker = (PROJECT_ROOT / "requirements-docker-cpu.txt").read_text(encoding="utf-8")
+        shared = {
+            line.strip()
+            for line in docker.splitlines()
+            if line.strip() and not line.lstrip().startswith("#")
+        }
+        main_pins = {
+            line.split(";", 1)[0].strip()
+            for line in main.splitlines()
+            if line.strip()
+            and not line.lstrip().startswith("#")
+            and 'python_version >= "3.13"' not in line
+        }
+        self.assertLessEqual(shared, main_pins)
+
     def test_compose_mounts_input_read_only_and_output_writable(self) -> None:
         compose = yaml.safe_load(
             (PROJECT_ROOT / "compose.yaml").read_text(encoding="utf-8")

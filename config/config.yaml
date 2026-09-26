@@ -101,10 +101,8 @@ size_estimation:
 visualization:
   enabled: true
   draw_classification_zone: true
-  classification_zone: {x_min_ratio: 0.0, x_max_ratio: 1.0, y_min_ratio: 0.4114583333, y_max_ratio: 1.0}
   classification_zone_color: [255, 190, 0]
   draw_size_measurement_zone: true
-  size_measurement_zone: {x_min_ratio: 0.0, x_max_ratio: 1.0, y_min_ratio: 0.70, y_max_ratio: 0.82}
   size_measurement_zone_color: [255, 220, 0]
   line_thickness: 4
   font_scale: 0.48
@@ -135,10 +133,8 @@ logging:
   level: INFO
   include_bbox_history: true
   include_quality_gate_failures: true
-  include_track_latency: true
   json_indent: 2
 benchmark:
-  enabled: true
   warmup_frames: 10
   report_percentiles:
   - 50
