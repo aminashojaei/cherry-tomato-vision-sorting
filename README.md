@@ -69,7 +69,7 @@ Python 3.10 through 3.13 is supported. The requirements file selects a compatibl
 ### Linux and macOS
 
 ```bash
-git clone <repository-url>
+git clone https://github.com/aminashojaei/cherry-tomato-vision-sorting.git
 cd cherry-tomato-vision-sorting
 python -m venv .venv
 source .venv/bin/activate
@@ -80,7 +80,7 @@ pip install -r requirements.txt
 ### Windows PowerShell
 
 ```powershell
-git clone <repository-url>
+git clone https://github.com/aminashojaei/cherry-tomato-vision-sorting.git
 Set-Location cherry-tomato-vision-sorting
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
@@ -92,7 +92,7 @@ For CUDA, install the matching PyTorch build for the target CUDA runtime first, 
 
 ## Docker
 
-The reproducible Docker workflow uses a pinned Python 3.11.11 CPU environment and targets `linux/amd64`. During every final-image build it verifies the two model hashes and runs the complete unit-test suite. The runtime stage depends on a marker created by the test stage, so a failed test prevents the runtime image from being built.
+The Docker workflow pins the Python 3.11.11 base image and Python packages and targets `linux/amd64`. During every final-image build it verifies the two model hashes and runs the complete unit-test suite. The runtime stage depends on a marker created by the test stage, so a failed test prevents the runtime image from being built.
 
 ```bash
 mkdir -p inputs outputs
@@ -171,12 +171,16 @@ Size is currently a **pixel-space proxy**, not a physical diameter measurement. 
 
 The measurement zone limits estimates to a narrow part of the frame where perspective is more consistent. Without a camera calibration and a known object-to-camera geometry, identical tomatoes can occupy different pixel sizes at different image locations. The thresholds therefore apply only to camera setups comparable to the one used to tune them.
 
+To recalibrate, change `size_estimation.thresholds` and the relevant zones in `config/config.yaml`. The displayed zones use these same settings. The current estimator deliberately accepts only `metric: min_dimension` and `required_samples: 1`; increasing the sample count requires implementing a multi-observation policy.
+
 ## Limitations
 
 - Size classes are based on pixels and cannot be interpreted as millimetres.
 - The size thresholds and zones are camera-specific and must be recalibrated after changes in resolution, crop, lens, camera height, or conveyor geometry.
 - The reported classifier metrics do not measure detector misses, tracking identity switches, or full-pipeline sorting accuracy.
 - Temporal aggregation reduces frame-level noise but can delay a final decision.
+- Calyx sampling stops when the health decision locks; its average can use fewer samples than a separate calyx policy would.
+- `passed` means a classified track disappeared for the configured tracking buffer. It does not prove crossing a physical exit line; tracks still active at the end of the video are not counted as passed.
 - The included checkpoints are PyTorch binaries; load only checkpoints obtained from a trusted source.
 - The current pipeline is offline video processing, not a real-time actuator controller.
 - The bundled Docker image is CPU-only and targets Linux x86-64. Apple Silicon runs it through Docker's x86-64 emulation.
@@ -213,4 +217,4 @@ Run the lightweight test suite with:
 python -m unittest discover -s tests -v
 ```
 
-For a complete Persian walkthrough of creating the GitHub repository and pushing this project, see [راهنمای انتشار در GitHub](docs/GITHUB_PUBLISHING.fa.md).
+For a Persian walkthrough of updating this GitHub repository, see [راهنمای به‌روزرسانی در GitHub](docs/GITHUB_PUBLISHING.fa.md).

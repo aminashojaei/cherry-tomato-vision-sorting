@@ -126,7 +126,6 @@ class TomatoTrack:
     health_prediction_history: list[int] = field(default_factory=list)
     calyx_prediction_history: list[int] = field(default_factory=list)
     classification_frames: list[int] = field(default_factory=list)
-    latency_information: dict[str, float] = field(default_factory=dict)
     quality_gate_failures: list[dict[str, Any]] = field(default_factory=list)
     in_classification_zone: bool = False
     zone_entry_frame: int | None = None

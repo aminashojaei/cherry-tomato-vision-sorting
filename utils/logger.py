@@ -12,8 +12,9 @@ from core.schemas import TomatoTrack
 
 
 class TomatoReportWriter:
-    def __init__(self, config: dict[str, Any]) -> None:
+    def __init__(self, config: dict[str, Any], size_labels: dict[str, str] | None = None) -> None:
         self.config = config
+        self.size_labels = size_labels or {"small": "Small", "medium": "Medium", "large": "Large"}
 
     def serialize_track(self, track: TomatoTrack) -> dict[str, Any]:
         bbox_by_frame = {item.frame_index: item for item in track.bbox_history}
@@ -108,8 +109,6 @@ class TomatoReportWriter:
                 }
                 for observation in track.bbox_history
             ]
-        if self.config.get("include_track_latency", True):
-            record["latency_information"] = dict(track.latency_information)
         if self.config.get("include_quality_gate_failures", True):
             record["quality_gate_failures"] = list(track.quality_gate_failures)
         return record
@@ -149,9 +148,9 @@ class TomatoReportWriter:
                 "size_measurements_finalized": sum(
                     r["size_finalized"] for r in records
                 ),
-                "small_tracks": sum(r["size_class"] == "Small" for r in records),
-                "medium_tracks": sum(r["size_class"] == "Medium" for r in records),
-                "large_tracks": sum(r["size_class"] == "Large" for r in records),
+                "small_tracks": sum(r["size_class"] == self.size_labels["small"] for r in records),
+                "medium_tracks": sum(r["size_class"] == self.size_labels["medium"] for r in records),
+                "large_tracks": sum(r["size_class"] == self.size_labels["large"] for r in records),
                 "passed_tracks": sum(r["passed"] for r in classified),
             },
             "tomatoes": records,

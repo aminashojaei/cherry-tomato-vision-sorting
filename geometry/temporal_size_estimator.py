@@ -18,7 +18,7 @@ class TemporalShortSideMeasurer:
         frame_index: int,
         frame_shape: tuple[int, ...],
     ) -> bool:
-        if not self.config.get("enabled", True) or track.size_finalized:
+        if not self.config.get("enabled", True) or track.size_finalized or not track.bbox.is_valid:
             return False
 
         height, width = frame_shape[:2]

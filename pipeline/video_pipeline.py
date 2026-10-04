@@ -54,6 +54,8 @@ class VideoPipeline:
         self.size_csv_path = resolve_project_path(
             paths["size_measurements_csv"], self.root
         )
+        if self.input_path.resolve() == self.output_path.resolve():
+            raise ValueError("Output video path must differ from input video path.")
         self.reader = VideoReader(self.input_path, config["video"].get("fallback_fps"))
         self.writer = None
 
@@ -101,8 +103,14 @@ class VideoPipeline:
                 config["classification_policy"]
             )
             self.size_estimator = TemporalShortSideMeasurer(config["size_estimation"])
-            self.annotator = FrameAnnotator(config["visualization"])
-            self.report_writer = TomatoReportWriter(config["logging"])
+            self.annotator = FrameAnnotator(
+                config["visualization"],
+                config["classification_policy"]["zone"],
+                config["size_estimation"]["zone"],
+            )
+            self.report_writer = TomatoReportWriter(
+                config["logging"], config["size_estimation"]["labels"]
+            )
             self.size_writer = SizeMeasurementWriter()
             self.monitor = PerformanceMonitor(
                 config["benchmark"],
@@ -211,7 +219,7 @@ class VideoPipeline:
             if self.writer:
                 self.writer.release()
 
-        self.track_manager.finalize_all(frame_index)
+        self.track_manager.finalize_all()
         benchmark = self.monitor.write_json(
             self.benchmark_path,
             int(self.config["logging"].get("json_indent", 2)),

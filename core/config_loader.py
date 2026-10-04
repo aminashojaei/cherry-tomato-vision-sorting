@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import math
 from pathlib import Path
 from typing import Any
 
@@ -44,7 +45,9 @@ def validate_config(config: dict[str, Any]) -> None:
         "video",
         "detector",
         "tracker",
+        "track_management",
         "classifier",
+        "classification_policy",
         "crop",
         "quality_gate",
         "size_estimation",
@@ -79,7 +82,11 @@ def validate_config(config: dict[str, Any]) -> None:
         ],
     }
     for name, value in probability_values.items():
-        if not isinstance(value, (int, float)) or not 0.0 <= float(value) <= 1.0:
+        if (
+            not isinstance(value, (int, float))
+            or not math.isfinite(float(value))
+            or not 0.0 <= float(value) <= 1.0
+        ):
             raise ConfigurationError(
                 f"{name} must be between 0 and 1; received {value!r}."
             )
@@ -119,16 +126,20 @@ def validate_config(config: dict[str, Any]) -> None:
             "Every batch.video_extensions value must be a non-empty string."
         )
 
-    limits = config["size_estimation"]["thresholds"]
-    if float(limits["small_max_px"]) != 150 or float(limits["medium_max_px"]) != 250:
-        raise ConfigurationError("Size thresholds must be 150/250.")
+    size = config["size_estimation"]
+    limits = size["thresholds"]
+    small, medium = float(limits["small_max_px"]), float(limits["medium_max_px"])
+    if not math.isfinite(small) or not math.isfinite(medium) or not 0 < small < medium:
+        raise ConfigurationError(
+            "Size thresholds must satisfy 0 < small_max_px < medium_max_px."
+        )
 
     if config["size_estimation"]["metric"] != "min_dimension":
         raise ConfigurationError(
             "The temporal size estimator requires size_estimation.metric=min_dimension."
         )
 
-    if int(config["size_estimation"]["required_samples"]) != 1:
+    if type(size["required_samples"]) is not int or size["required_samples"] != 1:
         raise ConfigurationError(
             "The current size policy requires exactly one valid sample."
         )
@@ -139,3 +150,68 @@ def validate_config(config: dict[str, Any]) -> None:
         != "lower_zone_asymmetric_temporal_voting"
     ):
         raise ConfigurationError("Unsupported classification policy mode.")
+
+    supported_types = (
+        ("detector.type", detector["type"], "yolo11n"),
+        ("tracker.type", tracker["type"], "bytetrack"),
+        ("classifier.type", classifier["type"], "shufflenet_v2_x1_0_multihead"),
+        ("size_estimation.type", size["type"], "temporal_bbox_short_side"),
+    )
+    for name, actual, expected in supported_types:
+        if actual != expected:
+            raise ConfigurationError(
+                f"{name} must be {expected!r}; received {actual!r}."
+            )
+
+    policy = config["classification_policy"]
+    for name in ("sample_stride_frames", "min_samples_for_healthy"):
+        if type(policy[name]) is not int or policy[name] <= 0:
+            raise ConfigurationError(
+                f"classification_policy.{name} must be a positive integer."
+            )
+    evidence = policy["unhealthy_evidence"]
+    for name in ("consecutive_positive_samples", "total_positive_samples", "top_k"):
+        if type(evidence[name]) is not int or evidence[name] <= 0:
+            raise ConfigurationError(
+                f"classification_policy.unhealthy_evidence.{name} must be a positive integer."
+            )
+
+    for name, zone in (
+        (
+            "track_management.tracking_zone",
+            config["track_management"]["tracking_zone"],
+        ),
+        ("classification_policy.zone", policy["zone"]),
+        ("size_estimation.zone", size["zone"]),
+    ):
+        try:
+            x_min, x_max = float(zone["x_min_ratio"]), float(zone["x_max_ratio"])
+            y_min, y_max = float(zone["y_min_ratio"]), float(zone["y_max_ratio"])
+        except (KeyError, TypeError, ValueError) as exc:
+            raise ConfigurationError(f"{name} must contain numeric min/max ratios.") from exc
+        if not all(math.isfinite(v) for v in (x_min, x_max, y_min, y_max)) or not (
+            0 <= x_min < x_max <= 1 and 0 <= y_min < y_max <= 1
+        ):
+            raise ConfigurationError(
+                f"{name} must satisfy 0 <= min < max <= 1 on both axes."
+            )
+
+    video = config["video"]
+    if video.get("fallback_fps") is not None and (
+        not math.isfinite(float(video["fallback_fps"]))
+        or float(video["fallback_fps"]) <= 0
+    ):
+        raise ConfigurationError("video.fallback_fps must be positive and finite.")
+    if video.get("max_frames") is not None and (
+        type(video["max_frames"]) is not int or video["max_frames"] <= 0
+    ):
+        raise ConfigurationError("video.max_frames must be a positive integer.")
+    if type(size["frame_edge_margin_px"]) is not int or size["frame_edge_margin_px"] < 0:
+        raise ConfigurationError("size_estimation.frame_edge_margin_px must be nonnegative.")
+    if type(tracker["lost_track_buffer"]) is not int or tracker["lost_track_buffer"] < 0:
+        raise ConfigurationError("tracker.lost_track_buffer must be nonnegative.")
+    device = config["runtime"]["device"]
+    if device not in ("auto", "cpu", "mps", "cuda") and not (
+        isinstance(device, str) and device.startswith("cuda:") and device[5:].isdigit()
+    ):
+        raise ConfigurationError(f"Unsupported runtime.device: {device!r}.")

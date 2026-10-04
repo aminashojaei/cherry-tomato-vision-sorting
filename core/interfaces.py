@@ -6,12 +6,7 @@ from typing import Protocol
 
 import numpy as np
 
-from core.schemas import (
-    ClassificationResult,
-    Detection,
-    TomatoTrack,
-    TrackerObservation,
-)
+from core.schemas import ClassificationResult, Detection, TomatoTrack, TrackerObservation
 
 
 class Detector(Protocol):
@@ -32,4 +27,6 @@ class Classifier(Protocol):
 
 
 class SizeEstimator(Protocol):
-    def estimate(self, track: TomatoTrack) -> str | None: ...
+    def observe(
+        self, track: TomatoTrack, frame_index: int, frame_shape: tuple[int, ...]
+    ) -> bool: ...
