@@ -52,84 +52,40 @@ class TrackManager:
     def get_track(self, track_id: int) -> TomatoTrack:
         return self._tracks[track_id]
 
-    def save_classification(
-        self,
-        track_id: int,
-        result: ClassificationResult,
-        frame_index: int,
+    def save_temporal_observation(
+        self, track_id: int, result: ClassificationResult, frame_index: int
     ) -> TomatoTrack:
         track = self.get_track(track_id)
-        if track.classified:
-            raise ValueError(f"Track {track_id} has already been classified.")
-
-        track.health_probability = result.health_probability
-        track.health_prediction = result.health_prediction
-        track.health_confidence = result.health_confidence
-        track.calyx_probability = result.calyx_probability
-        track.calyx_prediction = result.calyx_prediction
-        track.calyx_confidence = result.calyx_confidence
-        track.classification_frame = frame_index
         track.health_history.append(result.health_probability)
         track.calyx_history.append(result.calyx_probability)
         track.health_prediction_history.append(result.health_prediction)
         track.calyx_prediction_history.append(result.calyx_prediction)
         track.classification_frames.append(frame_index)
-        track.classified = True
+        probability = sum(track.calyx_history) / len(track.calyx_history)
+        track.calyx_probability = probability
+        track.calyx_prediction = int(probability >= self._calyx_threshold)
+        track.calyx_confidence = (
+            probability if track.calyx_prediction else 1 - probability
+        )
         return track
 
-    def save_frame_classification(
-        self,
-        track_id: int,
-        result: ClassificationResult,
-        frame_index: int,
+    def apply_temporal_aggregate(
+        self, track_id: int, aggregate: TemporalAggregate, frame_index: int
     ) -> TomatoTrack:
-        """Persist the current result and append an observation for every matched frame."""
-
         track = self.get_track(track_id)
-        track.health_probability = result.health_probability
-        track.health_prediction = result.health_prediction
-        track.health_confidence = result.health_confidence
-        track.calyx_probability = result.calyx_probability
-        track.calyx_prediction = result.calyx_prediction
-        track.calyx_confidence = result.calyx_confidence
-        if track.classification_frame is None:
+        track.health_positive_count = aggregate.positive_count
+        track.health_max_positive_run = aggregate.max_positive_run
+        track.health_top_k_mean = aggregate.top_k_mean
+        if aggregate.finalized:
+            track.classified = True
+            track.health_decision_locked = True
+            track.health_prediction = aggregate.prediction
+            track.health_probability = aggregate.probability
+            track.health_confidence = aggregate.confidence
+            track.health_decision_reason = aggregate.reason
+            track.health_decision_frame = frame_index
             track.classification_frame = frame_index
-        track.health_history.append(result.health_probability)
-        track.calyx_history.append(result.calyx_probability)
-        track.health_prediction_history.append(result.health_prediction)
-        track.calyx_prediction_history.append(result.calyx_prediction)
-        track.classification_frames.append(frame_index)
-        track.classified = True
         return track
-
-    def save_temporal_observation(self, track_id, r, f):
-        t = self.get_track(track_id)
-        t.health_history.append(r.health_probability)
-        t.calyx_history.append(r.calyx_probability)
-        t.health_prediction_history.append(r.health_prediction)
-        t.calyx_prediction_history.append(r.calyx_prediction)
-        t.classification_frames.append(f)
-        p = sum(t.calyx_history) / len(t.calyx_history)
-        t.calyx_probability = p
-        t.calyx_prediction = int(p >= self._calyx_threshold)
-        t.calyx_confidence = p if t.calyx_prediction else 1 - p
-        return t
-
-    def apply_temporal_aggregate(self, track_id, a: TemporalAggregate, f):
-        t = self.get_track(track_id)
-        t.health_positive_count = a.positive_count
-        t.health_max_positive_run = a.max_positive_run
-        t.health_top_k_mean = a.top_k_mean
-        if a.finalized:
-            t.classified = True
-            t.health_decision_locked = True
-            t.health_prediction = a.prediction
-            t.health_probability = a.probability
-            t.health_confidence = a.confidence
-            t.health_decision_reason = a.reason
-            t.health_decision_frame = f
-            t.classification_frame = f
-        return t
 
     def record_quality_failure(
         self,
@@ -148,23 +104,20 @@ class TrackManager:
                 track.active_status = False
                 track.matched_in_current_frame = False
 
-    def mark_passed_tracks(self, f, limit):
-        for t in self._tracks.values():
+    def mark_passed_tracks(self, frame_index: int, lost_track_buffer: int) -> None:
+        for track in self._tracks.values():
             if (
-                t.classified
-                and not t.active_status
-                and not t.passed
-                and f - t.last_frame >= limit
+                track.classified
+                and not track.active_status
+                and not track.passed
+                and frame_index - track.last_frame >= lost_track_buffer
             ):
-                t.passed = True
-                t.passed_frame = f
+                track.passed = True
+                track.passed_frame = frame_index
 
-    def finalize_all(self, f=None) -> None:
+    def finalize_all(self) -> None:
         for track in self._tracks.values():
             track.active_status = False
-            if track.classified and not track.passed:
-                track.passed = True
-                track.passed_frame = f
 
     def get_all_tracks(self) -> list[TomatoTrack]:
         return sorted(
