@@ -49,17 +49,6 @@ Classifier metrics are from the bundled held-out test metadata (`n = 208`):
 
 Joint health-and-calyx accuracy is **89.90%**. These numbers describe the classifier test set, not end-to-end conveyor performance. Detection, tracking, camera geometry, and temporal policy can change system-level results.
 
-### Sample end-to-end run
-
-The two-video Colab run completed successfully on CPU. These are execution counts, not accuracy measurements:
-
-| Video          | Tracks | Classified | Health: H/U | Calyx: P/A | Size: S/M/L | Processing FPS |
-| -------------- | -----: | ---------: | ----------: | ---------: | ----------: | -------------: |
-| `video_01.mp4` |     60 |         56 |     39 / 17 |    29 / 27 | 7 / 21 / 13 |           6.81 |
-| `video_02.mp4` |     60 |         56 |     42 / 14 |    31 / 25 | 19 / 34 / 1 |           6.47 |
-
-Four tracks in each video ended without a locked classification. Size totals can also be lower than classified-track totals because size is recorded only when a valid tracked box enters the measurement zone.
-
 ## Installation
 
 Python 3.10 through 3.13 is supported. The requirements file selects a compatible PyTorch/torchvision pair for Python 3.13 automatically. Pinned wheel availability was checked for Linux x86-64, Windows x86-64, and macOS Apple Silicon; the complete pipeline was executed on Colab/Linux CPU.
@@ -98,42 +87,9 @@ docker compose build
 docker compose run --rm tomato-sorting
 ```
 
-Place input videos in `inputs/`; generated reports and annotated videos appear in `outputs/`. Windows PowerShell commands, a one-video smoke test, and troubleshooting are documented in [Docker CPU workflow](docs/DOCKER.md).
-
-## Usage
-
-Process one video:
-
-```bash
-python run_pipeline.py \
-  --config config/config.yaml \
-  --input inputs/sample.mp4 \
-  --output-dir outputs
-```
-
-Process a directory:
-
-```bash
-python run_pipeline.py \
-  --config config/config.yaml \
-  --input inputs \
-  --output-dir outputs
-```
-
-Useful overrides:
-
-```bash
-python run_pipeline.py \
-  --config config/config.yaml \
-  --input inputs/sample.mp4 \
-  --output-dir outputs/smoke-test \
-  --device cpu \
-  --max-frames 120
-```
+Place input videos in `inputs/`; generated reports and annotated videos appear in `outputs/`.
 
 Each video receives its own folder containing `annotated.mp4`, `tomatoes.json`, `size_measurements.csv`, and `benchmark.json`. A batch-level `batch_summary.json` is also written.
-
-The Colab notebook in `notebooks/` installs the same requirements, verifies checkpoint hashes, runs the same CLI, summarizes output JSON, previews annotated videos, and downloads the output archive.
 
 ## Models
 
@@ -214,5 +170,3 @@ Run the lightweight test suite with:
 ```bash
 python -m unittest discover -s tests -v
 ```
-
-For a Persian walkthrough of updating this GitHub repository, see [راهنمای به‌روزرسانی در GitHub](docs/GITHUB_PUBLISHING.fa.md).
