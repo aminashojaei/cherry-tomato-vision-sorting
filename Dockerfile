@@ -41,7 +41,7 @@ RUN sha256sum -c models/checksums.sha256
 
 FROM base AS test
 
-COPY Dockerfile compose.yaml ./
+COPY Dockerfile compose.yaml requirements.txt ./
 COPY tests/ tests/
 
 RUN python -c "import cv2, lap, numpy, torch, torchvision, ultralytics, yaml" \

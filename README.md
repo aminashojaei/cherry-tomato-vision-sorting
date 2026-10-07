@@ -34,8 +34,6 @@ The detector runs on each frame. ByteTrack preserves identity across frames. Cro
 
 - [Annotated output](assets/demo/annotated_sample.mp4)
 
-This demo is the annotated output of the revised pipeline with the `150/250 px` size thresholds.
-
 Tomatoes with a detected calyx are marked with a star above the bounding box. The star color follows the health-decision color used by the visualization.
 
 ## Results
@@ -87,42 +85,9 @@ docker compose build
 docker compose run --rm tomato-sorting
 ```
 
-Place input videos in `inputs/`; generated reports and annotated videos appear in `outputs/`. Windows PowerShell commands, a one-video smoke test, and troubleshooting are documented in [Docker CPU workflow](docs/DOCKER.md).
-
-## Usage
-
-Process one video:
-
-```bash
-python run_pipeline.py \
-  --config config/config.yaml \
-  --input inputs/sample.mp4 \
-  --output-dir outputs
-```
-
-Process a directory:
-
-```bash
-python run_pipeline.py \
-  --config config/config.yaml \
-  --input inputs \
-  --output-dir outputs
-```
-
-Useful overrides:
-
-```bash
-python run_pipeline.py \
-  --config config/config.yaml \
-  --input inputs/sample.mp4 \
-  --output-dir outputs/smoke-test \
-  --device cpu \
-  --max-frames 120
-```
+Place input videos in `inputs/`; generated reports and annotated videos appear in `outputs/`.
 
 Each video receives its own folder containing `annotated.mp4`, `tomatoes.json`, `size_measurements.csv`, and `benchmark.json`. A batch-level `batch_summary.json` is also written.
-
-The Colab notebook in `notebooks/` installs the same requirements, verifies checkpoint hashes, runs the same CLI, summarizes output JSON, previews annotated videos, and downloads the output archive.
 
 ## Models
 
@@ -201,4 +166,10 @@ cherry-tomato-vision-sorting/
 ├── requirements.txt
 ├── README.fa.md
 └── run_pipeline.py
+```
+
+Run the lightweight test suite with:
+
+```bash
+python -m unittest discover -s tests -v
 ```
