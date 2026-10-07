@@ -1,7 +1,5 @@
 # Cherry Tomato Vision Sorting
 
-**English** | [فارسی](README.fa.md)
-
 An offline computer-vision pipeline for sorting cherry tomatoes from conveyor-belt video.
 
 - **Input:** one video, a directory of videos, or a glob pattern.
@@ -111,9 +109,14 @@ Health uses `unhealthy` as the positive class with threshold `0.375`. Calyx uses
 
 ## Dataset
 
-The training images are not included in this repository. The bundled metadata records a 208-image held-out classifier test split. Dataset provenance, collection protocol, class balance, and licensing should be published before the reported metrics are treated as independently reproducible.
+The project uses two datasets hosted on Roboflow Universe, corresponding to the detection and classification stages of the pipeline.
 
-Input videos are expected to resemble the deployment view: a fixed camera, stable conveyor path, and tomatoes moving through the configured tracking, classification, and measurement zones.
+| Dataset                      | Purpose                                                                              | Link                                                                                                              |
+| ---------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| Cherry Tomato Detection      | Training the YOLO model to localize cherry tomatoes in video frames                  | [Detection Dataset](https://universe.roboflow.com/aminas-workspace-1wohs/cherry-tomato-detection-r9qwn)           |
+| Tomato Defect Classification | Training the ShuffleNetV2 multi-head classifier for tomato health and calyx presence | [Classification Dataset](https://universe.roboflow.com/aminas-workspace-1wohs/tomato-defect-classification-llsti) |
+
+The detection model identifies tomatoes in each frame, while the classification model processes extracted tomato crops to predict health and calyx states. Size classification is handled separately through bounding-box geometry and does not require a dedicated training dataset.
 
 ## Size Estimation
 
