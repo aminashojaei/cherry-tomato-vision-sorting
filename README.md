@@ -1,7 +1,5 @@
 # Cherry Tomato Vision Sorting
 
-**English** | [فارسی](README.fa.md)
-
 An offline computer-vision pipeline for sorting cherry tomatoes from conveyor-belt video.
 
 - **Input:** one video, a directory of videos, or a glob pattern.
@@ -36,7 +34,7 @@ The detector runs on each frame. ByteTrack preserves identity across frames. Cro
 
 - [Annotated output](assets/demo/annotated_sample.mp4)
 
-This demo is the annotated output of the revised pipeline with the `150/250 px` size thresholds. For a tighter portfolio preview, the first 15 source seconds play at `1.3×` speed and the final two source seconds are removed; the annotations themselves are unchanged. The GIF is a short excerpt of the same output.
+This demo is the annotated output of the revised pipeline with the `150/250 px` size thresholds.
 
 Tomatoes with a detected calyx are marked with a star above the bounding box. The star color follows the health-decision color used by the visualization.
 
@@ -44,23 +42,12 @@ Tomatoes with a detected calyx are marked with a star above the bounding box. Th
 
 Classifier metrics are from the bundled held-out test metadata (`n = 208`):
 
-| Task | Accuracy | Precision | Recall | F1 | ROC AUC |
-|---|---:|---:|---:|---:|---:|
-| Health | 92.31% | 83.33% | 83.33% | 83.33% | 95.48% |
-| Calyx | 97.12% | 99.35% | 96.86% | 98.09% | 98.67% |
+| Task   | Accuracy | Precision | Recall |     F1 | ROC AUC |
+| ------ | -------: | --------: | -----: | -----: | ------: |
+| Health |   92.31% |    83.33% | 83.33% | 83.33% |  95.48% |
+| Calyx  |   97.12% |    99.35% | 96.86% | 98.09% |  98.67% |
 
 Joint health-and-calyx accuracy is **89.90%**. These numbers describe the classifier test set, not end-to-end conveyor performance. Detection, tracking, camera geometry, and temporal policy can change system-level results.
-
-### Sample end-to-end run
-
-The two-video Colab run completed successfully on CPU. These are execution counts, not accuracy measurements:
-
-| Video | Tracks | Classified | Health: H/U | Calyx: P/A | Size: S/M/L | Processing FPS |
-|---|---:|---:|---:|---:|---:|---:|
-| `video_01.mp4` | 60 | 56 | 39 / 17 | 29 / 27 | 7 / 21 / 13 | 6.81 |
-| `video_02.mp4` | 60 | 56 | 42 / 14 | 31 / 25 | 19 / 34 / 1 | 6.47 |
-
-Four tracks in each video ended without a locked classification. Size totals can also be lower than classified-track totals because size is recorded only when a valid tracked box enters the measurement zone.
 
 ## Installation
 
@@ -139,12 +126,12 @@ The Colab notebook in `notebooks/` installs the same requirements, verifies chec
 
 ## Models
 
-| Component | File | Purpose |
-|---|---|---|
-| YOLO detector | `models/detector/yolo_tomato_detector.pt` | Tomato detection |
-| ShuffleNetV2 multi-head | `models/classifier/shufflenet_multitask.pt` | Binary health and calyx logits |
-| Threshold metadata | `models/classifier/shufflenet_multitask_thresholds.json` | Validation-selected decision thresholds |
-| Test metadata | `models/classifier/shufflenet_multitask_metrics.json` | Held-out classifier metrics |
+| Component               | File                                                     | Purpose                                 |
+| ----------------------- | -------------------------------------------------------- | --------------------------------------- |
+| YOLO detector           | `models/detector/yolo_tomato_detector.pt`                | Tomato detection                        |
+| ShuffleNetV2 multi-head | `models/classifier/shufflenet_multitask.pt`              | Binary health and calyx logits          |
+| Threshold metadata      | `models/classifier/shufflenet_multitask_thresholds.json` | Validation-selected decision thresholds |
+| Test metadata           | `models/classifier/shufflenet_multitask_metrics.json`    | Held-out classifier metrics             |
 
 Release checkpoint SHA-256 values:
 
@@ -157,9 +144,14 @@ Health uses `unhealthy` as the positive class with threshold `0.375`. Calyx uses
 
 ## Dataset
 
-The training images are not included in this repository. The bundled metadata records a 208-image held-out classifier test split. Dataset provenance, collection protocol, class balance, and licensing should be published before the reported metrics are treated as independently reproducible.
+The project uses two datasets hosted on Roboflow Universe, corresponding to the detection and classification stages of the pipeline.
 
-Input videos are expected to resemble the deployment view: a fixed camera, stable conveyor path, and tomatoes moving through the configured tracking, classification, and measurement zones.
+| Dataset                      | Purpose                                                                              | Link                                                                                                              |
+| ---------------------------- | ------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------- |
+| Cherry Tomato Detection      | Training the YOLO model to localize cherry tomatoes in video frames                  | [Detection Dataset](https://universe.roboflow.com/aminas-workspace-1wohs/cherry-tomato-detection-r9qwn)           |
+| Tomato Defect Classification | Training the ShuffleNetV2 multi-head classifier for tomato health and calyx presence | [Classification Dataset](https://universe.roboflow.com/aminas-workspace-1wohs/tomato-defect-classification-llsti) |
+
+The detection model identifies tomatoes in each frame, while the classification model processes extracted tomato crops to predict health and calyx states. Size classification is handled separately through bounding-box geometry and does not require a dedicated training dataset.
 
 ## Size Estimation
 
@@ -210,11 +202,3 @@ cherry-tomato-vision-sorting/
 ├── README.fa.md
 └── run_pipeline.py
 ```
-
-Run the lightweight test suite with:
-
-```bash
-python -m unittest discover -s tests -v
-```
-
-For a Persian walkthrough of updating this GitHub repository, see [راهنمای به‌روزرسانی در GitHub](docs/GITHUB_PUBLISHING.fa.md).
